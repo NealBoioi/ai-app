@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ApprovedCustomer } from "@/features/customers/customer-store";
-
-type OrderStatus = "Open" | "Closed" | "Shipped" | "Delivered";
+import { ApprovedCustomer, Order } from "@/features/customers/customer-store";
 
 type QuoteResult = {
   price: number;
@@ -12,19 +10,44 @@ type QuoteResult = {
   suggestions: string[];
 };
 
-type Order = {
-  id: string;
-  customer: string;
-  product: string;
-  quantity: number;
-  price: number;
-  leadTime: string;
-  status: OrderStatus;
-};
-
 type QuoteBuilderProps = {
   approvedCustomers: ApprovedCustomer[];
   onSaveOrder: (order: Order) => void;
+};
+
+const cardStyles = {
+  background: "#ffffff",
+  borderRadius: "24px",
+  boxShadow: "0 20px 80px rgba(15, 23, 42, 0.08)",
+  padding: "32px",
+};
+
+const labelStyles = {
+  display: "block",
+  marginBottom: "6px",
+  color: "#374151",
+  fontWeight: 600,
+};
+
+const fieldStyles = {
+  width: "100%",
+  padding: "14px 16px",
+  borderRadius: "14px",
+  border: "1px solid #d1d5db",
+  marginTop: "8px",
+  outline: "none",
+  fontSize: "1rem",
+  color: "#111827",
+};
+
+const primaryButtonStyles = {
+  background: "#2563eb",
+  color: "#ffffff",
+  border: "none",
+  borderRadius: "14px",
+  padding: "12px 22px",
+  cursor: "pointer",
+  transition: "background 0.2s ease",
 };
 
 export default function QuoteBuilder({ approvedCustomers, onSaveOrder }: QuoteBuilderProps) {
@@ -98,16 +121,16 @@ export default function QuoteBuilder({ approvedCustomers, onSaveOrder }: QuoteBu
   };
 
   return (
-    <div>
-      <h2>Quote Builder</h2>
+    <div style={cardStyles}>
+      <h2 style={{ fontSize: "1.75rem", marginBottom: "18px" }}>Quote Builder</h2>
 
-      <div style={{ marginTop: "20px" }}>
-        <label style={{ display: "block", marginBottom: "10px" }}>
+      <div style={{ display: "grid", gap: "18px" }}>
+        <label style={labelStyles}>
           Approved Customer
           <select
             value={selectedCustomerId}
             onChange={(e) => setSelectedCustomerId(e.target.value)}
-            style={{ display: "block", width: "100%", marginTop: "8px" }}
+            style={fieldStyles}
           >
             <option value="">Select a customer</option>
             {approvedCustomers.map((customer) => (
@@ -118,49 +141,47 @@ export default function QuoteBuilder({ approvedCustomers, onSaveOrder }: QuoteBu
           </select>
         </label>
 
-        <label style={{ display: "block", marginBottom: "10px" }}>
+        <label style={labelStyles}>
           Product / Service
           <input
             placeholder="Product / Service"
             value={product}
             onChange={(e) => setProduct(e.target.value)}
-            style={{ display: "block", width: "100%", marginTop: "8px" }}
+            style={fieldStyles}
           />
         </label>
 
-        <label style={{ display: "block", marginBottom: "10px" }}>
+        <label style={labelStyles}>
           Quantity
           <input
             placeholder="Quantity"
             type="number"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            style={{ display: "block", width: "100%", marginTop: "8px" }}
+            style={fieldStyles}
             min={1}
           />
         </label>
 
-        <button onClick={generateQuote} disabled={loading}>
+        <button onClick={generateQuote} disabled={loading} style={primaryButtonStyles}>
           {loading ? "Validating quote..." : "Generate Quote"}
         </button>
 
         {error && (
-          <div style={{ marginTop: "16px", color: "#b00020" }}>
-            <strong>Error:</strong> {error}
-          </div>
+          <div style={{ marginTop: "8px", color: "#b91c1c", fontWeight: 600 }}>{error}</div>
         )}
       </div>
 
       {result && (
-        <div style={{ marginTop: "20px" }}>
-          <h3>Quote Result</h3>
-          <p><strong>Estimated Price:</strong> ${result.price}</p>
-          <p><strong>Lead Time:</strong> {result.leadTime}</p>
+        <div style={{ marginTop: "28px", background: "#f8fafc", borderRadius: "20px", padding: "22px" }}>
+          <h3 style={{ marginBottom: "14px" }}>Quote Result</h3>
+          <p style={{ color: "#111827", marginBottom: "8px" }}><strong>Estimated Price:</strong> ${result.price}</p>
+          <p style={{ color: "#111827", marginBottom: "18px" }}><strong>Lead Time:</strong> {result.leadTime}</p>
 
           {result.validationWarnings.length > 0 && (
-            <div style={{ marginTop: "16px" }}>
-              <h4>Warnings</h4>
-              <ul>
+            <div style={{ marginBottom: "18px" }}>
+              <h4 style={{ marginBottom: "10px", color: "#1d4ed8" }}>Warnings</h4>
+              <ul style={{ color: "#475569", paddingLeft: "20px" }}>
                 {result.validationWarnings.map((warning, index) => (
                   <li key={`warning-${index}`}>{warning}</li>
                 ))}
@@ -169,9 +190,9 @@ export default function QuoteBuilder({ approvedCustomers, onSaveOrder }: QuoteBu
           )}
 
           {result.suggestions.length > 0 && (
-            <div style={{ marginTop: "16px" }}>
-              <h4>Suggestions</h4>
-              <ul>
+            <div>
+              <h4 style={{ marginBottom: "10px", color: "#1d4ed8" }}>Suggestions</h4>
+              <ul style={{ color: "#475569", paddingLeft: "20px" }}>
                 {result.suggestions.map((suggestion, index) => (
                   <li key={`suggestion-${index}`}>{suggestion}</li>
                 ))}
