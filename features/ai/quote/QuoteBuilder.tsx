@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { ApprovedCustomer } from "@/features/customers/customer-store";
+
+type OrderStatus = "Open" | "Closed" | "Shipped" | "Delivered";
 
 type QuoteResult = {
   price: number;
@@ -9,17 +12,45 @@ type QuoteResult = {
   suggestions: string[];
 };
 
-export default function QuoteBuilder() {
-  const [customer, setCustomer] = useState("");
+type Order = {
+  id: string;
+  customer: string;
+  product: string;
+  quantity: number;
+  price: number;
+  leadTime: string;
+  status: OrderStatus;
+};
+
+type QuoteBuilderProps = {
+  approvedCustomers: ApprovedCustomer[];
+  onSaveOrder: (order: Order) => void;
+};
+
+export default function QuoteBuilder({ approvedCustomers, onSaveOrder }: QuoteBuilderProps) {
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [product, setProduct] = useState("");
   const [quantity, setQuantity] = useState("");
   const [result, setResult] = useState<null | QuoteResult>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const selectedCustomer = approvedCustomers.find((customer) => customer.id === selectedCustomerId);
+
   const generateQuote = async () => {
-    if (!customer.trim() || !product.trim() || !quantity.trim()) {
-      setError("Please fill all fields before generating a quote.");
+    if (!selectedCustomer) {
+      setError("Please select an approved customer.");
+      return;
+    }
+
+    if (!product.trim() || !quantity.trim()) {
+      setError("Please provide a product and a valid quantity.");
+      return;
+    }
+
+    const qty = parseInt(quantity, 10);
+    if (Number.isNaN(qty) || qty <= 0) {
+      setError("Quantity must be a positive number.");
       return;
     }
 
@@ -30,11 +61,14 @@ export default function QuoteBuilder() {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer, product, quantity }),
+        body: JSON.stringify({
+          customer: selectedCustomer.companyName,
+          product,
+          quantity: qty,
+        }),
       });
 
       const data = await response.json();
-
       if (!response.ok || !data.success) {
         setResult(null);
         setError(data.message || "Unable to generate quote.");
@@ -42,6 +76,18 @@ export default function QuoteBuilder() {
       }
 
       setResult(data.data);
+
+      const order: Order = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        customer: selectedCustomer.companyName,
+        product,
+        quantity: qty,
+        price: data.data.price,
+        leadTime: data.data.leadTime,
+        status: "Open",
+      };
+
+      onSaveOrder(order);
     } catch (err) {
       console.error(err);
       setError("An unexpected error occurred while generating the quote.");
@@ -56,39 +102,54 @@ export default function QuoteBuilder() {
       <h2>Quote Builder</h2>
 
       <div style={{ marginTop: "20px" }}>
-        <input
-          placeholder="Customer Name"
-          value={customer}
-          onChange={(e) => setCustomer(e.target.value)}
-          style={{ display: "block", marginBottom: "10px" }}
-        />
+        <label style={{ display: "block", marginBottom: "10px" }}>
+          Approved Customer
+          <select
+            value={selectedCustomerId}
+            onChange={(e) => setSelectedCustomerId(e.target.value)}
+            style={{ display: "block", width: "100%", marginTop: "8px" }}
+          >
+            <option value="">Select a customer</option>
+            {approvedCustomers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.companyName}
+              </option>
+            ))}
+          </select>
+        </label>
 
-        <input
-          placeholder="Product / Service"
-          value={product}
-          onChange={(e) => setProduct(e.target.value)}
-          style={{ display: "block", marginBottom: "10px" }}
-        />
+        <label style={{ display: "block", marginBottom: "10px" }}>
+          Product / Service
+          <input
+            placeholder="Product / Service"
+            value={product}
+            onChange={(e) => setProduct(e.target.value)}
+            style={{ display: "block", width: "100%", marginTop: "8px" }}
+          />
+        </label>
 
-        <input
-          placeholder="Quantity"
-          type="number"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          style={{ display: "block", marginBottom: "10px" }}
-          min={1}
-        />
+        <label style={{ display: "block", marginBottom: "10px" }}>
+          Quantity
+          <input
+            placeholder="Quantity"
+            type="number"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            style={{ display: "block", width: "100%", marginTop: "8px" }}
+            min={1}
+          />
+        </label>
 
         <button onClick={generateQuote} disabled={loading}>
-          {loading ? "Validating..." : "Generate Quote"}
+          {loading ? "Validating quote..." : "Generate Quote"}
         </button>
-      </div>
 
-      {error && (
-        <div style={{ marginTop: "20px", color: "#b00020" }}>
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+        {error && (
+          <div style={{ marginTop: "16px", color: "#b00020" }}>
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+      </div>
 
       {result && (
         <div style={{ marginTop: "20px" }}>
